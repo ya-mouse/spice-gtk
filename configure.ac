@@ -359,6 +359,14 @@ AM_CONDITIONAL([HAVE_GSTVIDEO], [test "x$have_gst_video" = "xyes"])
 AC_SUBST(GSTVIDEO_CFLAGS)
 AC_SUBST(GSTVIDEO_LIBS)
 
+AC_ARG_ENABLE([builtin-mjpeg],
+  AS_HELP_STRING([--enable-builtin-mjpeg], [Enable the builtin mjpeg video decoder @<:@default=yes@:>@]),
+  [],
+  enable_builtin_mjpeg="yes")
+AS_IF([test "x$enable_builtin_mjpeg" = "xyes"],
+      [AC_DEFINE([HAVE_BUILTIN_MJPEG], 1, [Use the builtin mjpeg decoder?])])
+AM_CONDITIONAL(WITH_BUILTIN_MJPEG, [test "x$enable_builtin_mjpeg" != "xno"])
+
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
     AC_TRY_CPP(
@@ -781,4 +789,7 @@ AC_MSG_NOTICE([
 ])
 if test "x$have_dbus" = "xno"; then
   AC_MSG_WARN([No D-Bus support, desktop integration and USB redirection may not work properly])
+fi
+if test "x$enable_builtin_mjpeg" = "xno" && test "x$have_gst_video" != "xyes"; then
+  AC_MSG_WARN([No builtin MJPEG or GStreamer decoder, video not be streamed])
 fi
