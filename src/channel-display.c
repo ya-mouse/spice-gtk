@@ -1280,7 +1280,7 @@ static void display_stream_reset_rendering_timer(display_stream *st)
  *         even after the mm_time is updated.
  *         When src-time << dst-time, a significant video frames loss will occur.
  *     (b) If src-time > dst-time
- *         Frames will be dropped till the mm-time will be updated.
+ *         Frames will be dropped till the mm-time is be updated.
  * (case 2) mm-time is synced with dst-time, but frames that were in the command
  *         ring during migration still arrive (such frames hold src-time).
  *    (a) If src-time < dst-time
@@ -1336,7 +1336,7 @@ static void display_stream_test_frames_mm_time_reset(display_stream *st,
 
     if (new_op->multi_media_time < tail_op->multi_media_time) {
         SPICE_DEBUG("new-frame-time < tail-frame-time (%u < %u):"
-                    " reseting stream, id %d",
+                    " resetting stream, id %d",
                     new_op->multi_media_time,
                     tail_op->multi_media_time,
                     new_op->id);
