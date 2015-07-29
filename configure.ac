@@ -338,6 +338,27 @@ AM_CONDITIONAL([WITH_GSTAUDIO], [test "x$have_gst_audio" = "xyes"])
 AC_SUBST(GSTAUDIO_CFLAGS)
 AC_SUBST(GSTAUDIO_LIBS)
 
+AC_ARG_ENABLE([gst-video],
+              AS_HELP_STRING([--enable-gst-video=@<:@auto/yes/no@:>@],
+                             [Enable GStreamer video support @<:@default=auto@:>@]),
+              [],
+              [enable_gst_video="auto"])
+
+AS_IF([test "x$enable_gst_video" != "xno"],
+      [PKG_CHECK_MODULES(GSTVIDEO, gstreamer-1.0 gstreamer-base-1.0 gstreamer-app-1.0 gstreamer-video-1.0, [have_gst_video="yes"], [have_gst_video="no"])
+       AS_IF([test "x$have_gst_video" = "xyes"],
+             [AC_DEFINE([HAVE_GSTVIDEO], 1, [Have GStreamer 1.0 video?])
+             enable_gst_video="yes"],
+             [AS_IF([test "x$enable_gst_video" = "xyes"],
+                    [AC_MSG_ERROR([GStreamer 1.0 video requested but not found])
+             ])
+       ])
+])
+AS_IF([test "x$enable_gst_video" = "xauto"], [enable_gst_video="no"])
+AM_CONDITIONAL([HAVE_GSTVIDEO], [test "x$have_gst_video" = "xyes"])
+AC_SUBST(GSTVIDEO_CFLAGS)
+AC_SUBST(GSTVIDEO_LIBS)
+
 AC_CHECK_LIB(jpeg, jpeg_destroy_decompress,
     AC_MSG_CHECKING([for jpeglib.h])
     AC_TRY_CPP(
@@ -702,7 +723,7 @@ SPICE_CFLAGS="$SPICE_CFLAGS $WARN_CFLAGS"
 
 AC_SUBST(SPICE_CFLAGS)
 
-SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GSTAUDIO_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
+SPICE_GLIB_CFLAGS="$PIXMAN_CFLAGS $PULSE_CFLAGS $GSTVIDEO_CFLAGS $GSTAUDIO_CFLAGS $GLIB2_CFLAGS $GIO_CFLAGS $GOBJECT2_CFLAGS $SSL_CFLAGS $SASL_CFLAGS"
 SPICE_GTK_CFLAGS="$SPICE_GLIB_CFLAGS $GTK_CFLAGS "
 
 AC_SUBST(SPICE_GLIB_CFLAGS)
@@ -747,6 +768,7 @@ AC_MSG_NOTICE([
         Gtk:                      ${with_gtk}
         Coroutine:                ${with_coroutine}
         Audio:                    ${with_audio}
+        GStreamer Video:          ${enable_gst_video}
         SASL support:             ${enable_sasl}
         Smartcard support:        ${have_smartcard}
         USB redirection support:  ${have_usbredir} ${with_usbredir_hotplug}
