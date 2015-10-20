@@ -359,6 +359,30 @@ AM_CONDITIONAL([HAVE_GSTVIDEO], [test "x$have_gst_video" = "xyes"])
 AC_SUBST(GSTVIDEO_CFLAGS)
 AC_SUBST(GSTVIDEO_LIBS)
 
+gst_video_missing=""
+if test "x$enable_gst_video" != "xno"; then
+    dnl Warn if the GStreamer elements needed at runtime are missing
+    gstreamer_1_0_toolsdir=`$PKG_CONFIG --variable=toolsdir gstreamer-1.0`
+    gstreamer_1_0_inspect="$gstreamer_1_0_toolsdir/gst-inspect-1.0"
+    AC_MSG_CHECKING([GStreamer 1.0 inspection tool])
+    if test -r "$gstreamer_1_0_inspect"; then
+        AC_MSG_RESULT([yes])
+        for element in appsrc jpegdec vp8dec h264parse avdec_h264 videoconvert appsink
+        do
+            AC_MSG_CHECKING([GStreamer 1.0 $element element])
+            if $gstreamer_1_0_inspect $element >/dev/null 2>/dev/null; then
+                AC_MSG_RESULT([yes])
+            else
+                AC_MSG_RESULT([no])
+                gst_video_missing="$gstvideo_missing $element"
+            fi
+        done
+    else
+        AC_MSG_RESULT([no])
+        gst_video_missing="$gstvideo_missing gst-inspect-1.0"
+    fi
+fi
+
 AC_ARG_ENABLE([builtin-mjpeg],
   AS_HELP_STRING([--enable-builtin-mjpeg], [Enable the builtin mjpeg video decoder @<:@default=yes@:>@]),
   [],
@@ -792,4 +816,7 @@ if test "x$have_dbus" = "xno"; then
 fi
 if test "x$enable_builtin_mjpeg" = "xno" && test "x$have_gst_video" != "xyes"; then
   AC_MSG_WARN([No builtin MJPEG or GStreamer decoder, video not be streamed])
+fi
+if test x"$gst_video_missing" != x; then
+    AC_MSG_WARN([The following GStreamer 1.0 tools/elements are missing:$gst_video_missing. The GStreamer video decoder can be built but may not work.])
 fi
