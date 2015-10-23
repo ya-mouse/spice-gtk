@@ -34,6 +34,7 @@
 
 G_BEGIN_DECLS
 
+struct ast_decoder;
 
 typedef struct display_surface {
     guint32                     surface_id;
@@ -71,6 +72,9 @@ typedef struct display_stream {
     struct jpeg_decompress_struct  mjpeg_cinfo;
     struct jpeg_error_mgr          mjpeg_jerr;
 
+    /* aspeed decoder */
+    struct ast_decoder          *dec;
+
     uint8_t                     *out_frame;
     GQueue                      *msgq;
     guint                       timeout;
@@ -107,6 +111,11 @@ uint32_t stream_get_current_frame(display_stream *st, uint8_t **data);
 void stream_mjpeg_init(display_stream *st);
 void stream_mjpeg_data(display_stream *st);
 void stream_mjpeg_cleanup(display_stream *st);
+
+/* channel-display-aspeed.c */
+void stream_aspeed_init(display_stream *st);
+void stream_aspeed_data(display_stream *st);
+void stream_aspeed_cleanup(display_stream *st);
 
 G_END_DECLS
 

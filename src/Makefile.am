@@ -257,6 +257,7 @@ libspice_client_glib_2_0_la_SOURCES =			\
 	channel-display.c				\
 	channel-display-priv.h				\
 	channel-display-mjpeg.c				\
+	channel-display-aspeed.c			\
 	channel-inputs.c				\
 	channel-main.c					\
 	channel-playback.c				\

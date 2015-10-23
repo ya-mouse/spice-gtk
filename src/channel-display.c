@@ -590,6 +590,8 @@ static void spice_display_channel_reset_capabilities(SpiceChannel *channel)
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MONITORS_CONFIG);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_COMPOSITE);
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_A8_SURFACE);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_MULTI_CODEC);
+    spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_CODEC_ASPEED);
 #ifdef USE_LZ4
     spice_channel_set_capability(SPICE_CHANNEL(channel), SPICE_DISPLAY_CAP_LZ4_COMPRESSION);
 #endif
@@ -1009,6 +1011,9 @@ static void display_handle_stream_create(SpiceChannel *channel, SpiceMsgIn *in)
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:
         stream_mjpeg_init(st);
         break;
+    case SPICE_VIDEO_CODEC_TYPE_ASPEED:
+        stream_aspeed_init(st);
+        break;
     }
 }
 
@@ -1132,6 +1137,9 @@ static gboolean display_stream_render(display_stream *st)
         switch (st->codec) {
         case SPICE_VIDEO_CODEC_TYPE_MJPEG:
             stream_mjpeg_data(st);
+            break;
+        case SPICE_VIDEO_CODEC_TYPE_ASPEED:
+            stream_aspeed_data(st);
             break;
         }
 
@@ -1480,6 +1488,9 @@ static void destroy_stream(SpiceChannel *channel, int id)
     switch (st->codec) {
     case SPICE_VIDEO_CODEC_TYPE_MJPEG:
         stream_mjpeg_cleanup(st);
+        break;
+    case SPICE_VIDEO_CODEC_TYPE_ASPEED:
+        stream_aspeed_cleanup(st);
         break;
     }
 
