@@ -104,7 +104,7 @@ struct ast_decoder {
     int Mapping;
     int32_t *buf;
     uint32_t length;
-    int32_t *m_decodeBuf;
+    uint32_t *m_decodeBuf;
     int _index;
     int m_newbits;
     int txb;
@@ -131,9 +131,9 @@ struct ast_decoder {
     int32_t CbValueInTile[64];
     int32_t CrValueInTile[64];
 
-    int32_t m_QT[4][64];
+    int64_t m_QT[4][64];
 
-    int32_t previousYUVData[0x753000];
+//    int32_t previousYUVData[0x753000];
 };
 
 #include <byteswap.h>
@@ -145,9 +145,9 @@ struct ast_decoder {
 #if 0
 #define GET_LONG(x) (x)
 #else
-static uint32_t GET_LONG(uint32_t x) {
-    printf("-- %x\n", x);
-    return x;
+static int64_t GET_LONG(int32_t x) {
+//    printf("-- %x\n", x);
+    return x & 0xffffffffL;
 }
 #endif
 
@@ -261,6 +261,10 @@ static void initHuffmanTable(struct ast_decoder *dec)
 
 void convertYUVtoRGB(struct ast_decoder *dec, int i, int j)
 {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    int32_t end = dec->RealWIDTH * dec->RealHEIGHT;
         if(dec->m_Mode420 == 0)
         {
             dec->YValueInTile = dec->YUVTile;
@@ -285,9 +289,9 @@ void convertYUVtoRGB(struct ast_decoder *dec, int i, int j)
                     int i4 = dec->YValueInTile[i3];
                     int k4 = dec->CbValueInTile[i3];
                     int i5 = dec->CrValueInTile[i3];
-                    dec->previousYUVData[k3] = i4;
-                    dec->previousYUVData[k3 + 1] = k4;
-                    dec->previousYUVData[k3 + 2] = i5;
+//                    dec->previousYUVData[k3] = i4;
+//                    dec->previousYUVData[k3 + 1] = k4;
+//                    dec->previousYUVData[k3 + 2] = i5;
                     int l6 = dec->calculatedRGBofY[i4] + dec->calculatedRGBofCbToB[k4];
                     int j7 = dec->calculatedRGBofY[i4] + (dec->calculatedRGBofCbToG[k4] + dec->calculatedRGBofCrToG[i5]);
                     int l7 = dec->calculatedRGBofY[i4] + dec->calculatedRGBofCrToR[i5];
@@ -305,10 +309,11 @@ void convertYUVtoRGB(struct ast_decoder *dec, int i, int j)
                         l7 = 0;
                     if(k3 < dec->RealWIDTH * dec->RealHEIGHT * 3)
                     {
-                        dec->m_decodeBuf[k3] = dec->rangeLimitTable[l6];
-                        dec->m_decodeBuf[k3 + 1] = dec->rangeLimitTable[j7];
-                        dec->m_decodeBuf[k3 + 2] = dec->rangeLimitTable[l7];
-                        printf("444 %d %d, %d %d %d\n", k5 + l, i6 + k1, dec->m_decodeBuf[k3], dec->m_decodeBuf[k3 + 1], dec->m_decodeBuf[k3 + 2]);
+                        b = dec->rangeLimitTable[l6];
+                        g = dec->rangeLimitTable[j7];
+                        r = dec->rangeLimitTable[l7];
+                        dec->m_decodeBuf[end-(i6 + k1)*dec->RealWIDTH + k5 + l] = b | g << 8 | r << 16;
+                        //printf("444 k3=%d %d %d, %d %d %d  %08X\n", k3, k5 + l, i6 + k1, r, g, b, dec->m_decodeBuf[end-(i6 + k1)*dec->RealWIDTH + k5 + l]);
                     }
                 }
 
@@ -371,27 +376,28 @@ void convertYUVtoRGB(struct ast_decoder *dec, int i, int j)
                         k8 = k9++;
                         break;
                     }
-                    int l3 = (l2 + j1) * 3;
+//                    int l3 = (l2 + j1) * 3;
                     int j3 = j10 + (j1 >> 1);
                     int j4 = dec->YValueInTile420[l9][k8];
                     int l4 = dec->CbValueInTile[j3];
                     int j5 = dec->CrValueInTile[j3];
-                    int i7 = dec->calculatedRGBofY[j4] + dec->calculatedRGBofCbToB[l4];
-                    int k7 = dec->calculatedRGBofY[j4] + (dec->calculatedRGBofCbToG[l4] + dec->calculatedRGBofCrToG[j5]);
-                    int i8 = dec->calculatedRGBofY[j4] + dec->calculatedRGBofCrToR[j5];
-                    if(i7 >= 0)
-                        dec->m_decodeBuf[l3] = dec->rangeLimitTable[i7 + 256];
+                    int B = dec->calculatedRGBofY[j4] + dec->calculatedRGBofCbToB[l4];
+                    int G = dec->calculatedRGBofY[j4] + (dec->calculatedRGBofCbToG[l4] + dec->calculatedRGBofCrToG[j5]);
+                    int R = dec->calculatedRGBofY[j4] + dec->calculatedRGBofCrToR[j5];
+                    if(B >= 0)
+                        b = dec->rangeLimitTable[B + 256];
                     else
-                        dec->m_decodeBuf[l3] = 0;
-                    if(k7 >= 0)
-                        dec->m_decodeBuf[l3 + 1] = dec->rangeLimitTable[k7 + 256];
+                        b = 0;
+                    if(G >= 0)
+                        g = dec->rangeLimitTable[G + 256];
                     else
-                        dec->m_decodeBuf[l3 + 1] = 0;
-                    if(i8 >= 0)
-                        dec->m_decodeBuf[l3 + 2] = dec->rangeLimitTable[i8 + 256];
+                        g = 0;
+                    if(R >= 0)
+                        r = dec->rangeLimitTable[R + 256];
                     else
-                        dec->m_decodeBuf[l3 + 2] = 0;
-                    printf("420 %d %d, %d %d %d\n", l5 + j1, j6 + j2, dec->m_decodeBuf[l3], dec->m_decodeBuf[l3 + 1], dec->m_decodeBuf[l3 + 2]);
+                        r = 0;
+                    dec->m_decodeBuf[end-(j6 + j2)*dec->RealWIDTH + l5 + j1] = b | g << 8 | r << 16;
+//                    printf("420 %d %d, %d %d %d  %08X\n", l5 + j1, j6 + j2, b, g, r, dec->m_decodeBuf[(j6 + j2)*dec->RealWIDTH + l5 + j1]);
                 }
 
                 l2 += dec->RealWIDTH;
@@ -412,7 +418,7 @@ static void setQuantizationTable(int8_t *abyte0, int8_t byte0, int8_t *abyte1)
     }
 }
 
-static void loadLuminanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
+static void loadLuminanceQuantizationTable(struct ast_decoder *dec, int64_t *al)
 {
     float af[] = {
         1.0F, 1.38704F, 1.306563F, 1.175876F, 1.0F, 0.785695F, 0.5411961F, 0.2758994F
@@ -476,7 +482,7 @@ static void loadLuminanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
     dec->byte_pos += 64;
 }
 
-void loadChrominanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
+void loadChrominanceQuantizationTable(struct ast_decoder *dec, int64_t *al)
 {
     float af[] = {
         1.0F, 1.38704F, 1.306563F, 1.175876F, 1.0F, 0.785695F, 0.5411961F, 0.2758994F
@@ -578,7 +584,7 @@ void loadChrominanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
     dec->byte_pos += 64;
 }
 
-void loadPass2LuminanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
+void loadPass2LuminanceQuantizationTable(struct ast_decoder *dec, int64_t *al)
 {
     float af[] = {
         1.0F, 1.38704F, 1.306563F, 1.175876F, 1.0F, 0.785695F, 0.5411961F, 0.2758994F
@@ -642,7 +648,7 @@ void loadPass2LuminanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
     dec->byte_pos += 64;
 }
 
-void loadPass2ChrominanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
+void loadPass2ChrominanceQuantizationTable(struct ast_decoder *dec, int64_t *al)
 {
     float af[] = {
         1.0F, 1.38704F, 1.306563F, 1.175876F, 1.0F, 0.785695F, 0.5411961F, 0.2758994F
@@ -747,24 +753,24 @@ void loadPass2ChrominanceQuantizationTable(struct ast_decoder *dec, int32_t *al)
 
 static void updateReadBuf(struct ast_decoder *dec, int i)
 {
-    int32_t uprdbuf_readbuf;
-    printf("--> updateReadBuf(%d)\n", i);
+    int64_t uprdbuf_readbuf;
+//    printf("--> updateReadBuf(%d)\n", i);
     if (dec->m_newbits - i <= 0) {
         uprdbuf_readbuf = GET_LONG(dec->buf[dec->_index]);
         dec->_index++;
-        dec->buf[0] = (GET_LONG(dec->buf[0]) << i) | ((GET_LONG(dec->buf[1]) | uprdbuf_readbuf >> dec->m_newbits) >> (32 - i));
-        dec->buf[1] = uprdbuf_readbuf << (i - dec->m_newbits);
+        dec->buf[0] = (int32_t)(GET_LONG(dec->buf[0]) << i) | (int32_t)((GET_LONG(dec->buf[1]) | uprdbuf_readbuf >> dec->m_newbits) >> (32 - i));
+        dec->buf[1] = (int32_t)(uprdbuf_readbuf << (i - dec->m_newbits));
         dec->m_newbits += 32 - i;
     } else {
-        dec->buf[0] = (GET_LONG(dec->buf[0]) << i) | (GET_LONG(dec->buf[1]) >> (32 - i));
-        dec->buf[1] = GET_LONG(dec->buf[1]) << i;
+        dec->buf[0] = (int32_t)(GET_LONG(dec->buf[0]) << i) | (int32_t)(GET_LONG(dec->buf[1]) >> (32 - i));
+        dec->buf[1] = (int32_t)(GET_LONG(dec->buf[1]) << i);
         dec->m_newbits -= i;
     }
 }
 
 static short lookKbits(struct ast_decoder *dec, uint8_t byte0)
 {
-    return GET_LONG(dec->buf[0]) >> (32 - byte0);
+    return (short)(GET_LONG(dec->buf[0]) >> (32 - byte0));
 }
 
 static void skipKbits(struct ast_decoder *dec, uint8_t byte0)
@@ -772,13 +778,13 @@ static void skipKbits(struct ast_decoder *dec, uint8_t byte0)
     if (dec->m_newbits - byte0 <= 0) {
         if (dec->_index > dec->length - 1)
             dec->_index = dec->length - 1;
-        dec->buf[0] = (GET_LONG(dec->buf[0]) << byte0) | ((GET_LONG(dec->buf[1]) | GET_LONG(dec->buf[dec->_index]) >> dec->m_newbits) >> (32 - byte0));
-        dec->buf[1] = GET_LONG(dec->buf[dec->_index]) << (byte0 - dec->m_newbits);
+        dec->buf[0] = (int32_t)(GET_LONG(dec->buf[0]) << byte0) | (int32_t)((GET_LONG(dec->buf[1]) | GET_LONG(dec->buf[dec->_index]) >> dec->m_newbits) >> (32 - byte0));
+        dec->buf[1] = (int32_t)(GET_LONG(dec->buf[dec->_index]) << (byte0 - dec->m_newbits));
         dec->m_newbits += 32 - byte0;
         dec->_index++;
     } else {
-        dec->buf[0] = (GET_LONG(dec->buf[0]) << byte0) | (GET_LONG(dec->buf[1]) >> (32 - byte0));
-        dec->buf[1] = GET_LONG(dec->buf[1]) << byte0;
+        dec->buf[0] = (dec->buf[0] << byte0) | (int32_t)(GET_LONG(dec->buf[1]) >> (32 - byte0));
+        dec->buf[1] = (dec->buf[1] << byte0);
         dec->m_newbits -= byte0;
     }
 }
@@ -786,10 +792,10 @@ static void skipKbits(struct ast_decoder *dec, uint8_t byte0)
 static void moveBlockIndex(struct ast_decoder *dec)
 {
     dec->txb++;
-    printf("--> moveBlockIndex()\n");
+//    printf("--> moveBlockIndex()\n");
     if (dec->txb == dec->tmp_WIDTHBy16) {
         // m_view.repaint((dec->txb - 1) * 16, dec->tyb * 16, 16, 16);
-        printf("repaint\n");
+//        printf("repaint\n");
     }
     if (dec->m_Mode420 == 0)
     {
@@ -816,7 +822,7 @@ static void moveBlockIndex(struct ast_decoder *dec)
 static void decompressVQ(struct ast_decoder *dec, int i, int j, char byte0)
 {
     int k = 0;
-    printf("--> decompressVQ(%d, %d, %d)\n", i, j, byte0);
+//    printf("--> decompressVQ(%d, %d, %d)\n", i, j, byte0);
     if (dec->m_VQ.BitMapBits == 0) {
         for (int l = 0; l < 64; l++) {
             dec->YUVTile[k + 0] = (dec->m_VQ.Color[dec->m_VQ.Index[0]] & 0xff0000L) >> 16;
@@ -860,12 +866,13 @@ void stream_aspeed_data(display_stream *st)
     struct ast_decoder *dec = st->dec;
 
     stream_get_dimensions(st, &width, &height);
-    dest = g_malloc0(width * height * 4);
+    dest = g_malloc0(width * height * 4 * 3);
 
     g_free(st->out_frame);
     st->out_frame = dest;
 
     len = stream_get_current_frame(st, (void *)&dec->buf);
+    if (len < 86) return;
 
     hdr = (struct ASTHeader *)dec->buf;
     printf("### decode_frame(%zd): %dx%d (%dx%d)\n", len, width, height, hdr->src_mode_x, hdr->src_mode_y);
@@ -874,6 +881,7 @@ void stream_aspeed_data(display_stream *st)
     j = hdr->comp_size >> 2;
 
     dec->m_decodeBuf = (void *)st->out_frame;
+    dec->length = j;
     dec->_index = 2;
     dec->m_newbits = 32;
     dec->txb = dec->tyb = 0;
@@ -938,8 +946,8 @@ void stream_aspeed_data(display_stream *st)
             moveBlockIndex(dec);
             break;
         case 8:
-            dec->txb = (GET_LONG(dec->buf[0]) & 0xff00000L) >> 20;
-            dec->tyb = (GET_LONG(dec->buf[0]) & 0xff000L) >> 12;
+            dec->txb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff00000L) >> 20);
+            dec->tyb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff000L) >> 12);
             updateReadBuf(dec, 20);
             // decompressJPEG(dec, dec->txb, dec->tyb, 0);
             moveBlockIndex(dec);
@@ -950,8 +958,8 @@ void stream_aspeed_data(display_stream *st)
             moveBlockIndex(dec);
             break;
         case 10:
-            dec->txb = (GET_LONG(dec->buf[0]) & 0xff00000L) >> 20;
-            dec->tyb = (GET_LONG(dec->buf[0]) & 0xff000L) >> 12;
+            dec->txb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff00000L) >> 20);
+            dec->tyb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff000L) >> 12);
             updateReadBuf(dec, 20);
             // decompressJPEGPass2(dec, dec->txb, dec->tyb, 2);
             moveBlockIndex(dec);
@@ -973,13 +981,13 @@ void stream_aspeed_data(display_stream *st)
             }
             break;
         case 13:
-            dec->txb = (GET_LONG(dec->buf[0]) & 0xff00000L) >> 20;
-            dec->tyb = (GET_LONG(dec->buf[0]) & 0xff000L) >> 12;
+            dec->txb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff00000L) >> 20);
+            dec->tyb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff000L) >> 12);
             updateReadBuf(dec, 20);
             dec->m_VQ.BitMapBits = 0;
             for(int j1 = 0; j1 < 1; j1++)
             {
-                dec->m_VQ.Index[j1] = (GET_LONG(dec->buf[0]) >> 29) & 3L;
+                dec->m_VQ.Index[j1] = (int32_t)((GET_LONG(dec->buf[0]) >> 29) & 3L);
                 if(((GET_LONG(dec->buf[0]) >> 31) & 1L) == 0L)
                 {
                     updateReadBuf(dec, 3);
@@ -998,7 +1006,7 @@ void stream_aspeed_data(display_stream *st)
             dec->m_VQ.BitMapBits = 1;
             for(int k1 = 0; k1 < 2; k1++)
             {
-                dec->m_VQ.Index[k1] = (GET_LONG(dec->buf[0]) >> 29) & 3L;
+                dec->m_VQ.Index[k1] = (int32_t)((GET_LONG(dec->buf[0]) >> 29) & 3L);
                 if(((GET_LONG(dec->buf[0]) >> 31) & 1L) == 0L)
                 {
                     updateReadBuf(dec, 3);
@@ -1012,13 +1020,13 @@ void stream_aspeed_data(display_stream *st)
             moveBlockIndex(dec);
             break;
         case 14:
-            dec->txb = (GET_LONG(dec->buf[0]) & 0xff00000L) >> 20;
-            dec->tyb = (GET_LONG(dec->buf[0]) & 0xff000L) >> 12;
+            dec->txb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff00000L) >> 20);
+            dec->tyb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff000L) >> 12);
             updateReadBuf(dec, 20);
             dec->m_VQ.BitMapBits = 1;
             for(int l1 = 0; l1 < 2; l1++)
             {
-                dec->m_VQ.Index[l1] = (GET_LONG(dec->buf[0]) >> 29) & 3L;
+                dec->m_VQ.Index[l1] = (int32_t)((GET_LONG(dec->buf[0]) >> 29) & 3L);
                 if(((GET_LONG(dec->buf[0]) >> 31) & 1L) == 0L)
                 {
                     updateReadBuf(dec, 3);
@@ -1037,7 +1045,7 @@ void stream_aspeed_data(display_stream *st)
             dec->m_VQ.BitMapBits = 2;
             for(int i2 = 0; i2 < 4; i2++)
             {
-                dec->m_VQ.Index[i2] = (GET_LONG(dec->buf[0]) >> 29) & 3L;
+                dec->m_VQ.Index[i2] = (int32_t)((GET_LONG(dec->buf[0]) >> 29) & 3L);
                 if(((GET_LONG(dec->buf[0]) >> 31) & 1L) == 0L)
                 {
                     updateReadBuf(dec, 3);
@@ -1052,13 +1060,13 @@ void stream_aspeed_data(display_stream *st)
             moveBlockIndex(dec);
             break;
         case 15:
-            dec->txb = (GET_LONG(dec->buf[0]) & 0xff00000L) >> 20;
-            dec->tyb = (GET_LONG(dec->buf[0]) & 0xff000L) >> 12;
+            dec->txb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff00000L) >> 20);
+            dec->tyb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff000L) >> 12);
             updateReadBuf(dec, 20);
             dec->m_VQ.BitMapBits = 2;
             for(int j2 = 0; j2 < 4; j2++)
             {
-                dec->m_VQ.Index[j2] = (GET_LONG(dec->buf[0]) >> 29) & 3L;
+                dec->m_VQ.Index[j2] = (int32_t)((GET_LONG(dec->buf[0]) >> 29) & 3L);
                 if(((GET_LONG(dec->buf[0]) >> 31) & 1L) == 0L)
                 {
                     updateReadBuf(dec, 3);
@@ -1078,8 +1086,8 @@ void stream_aspeed_data(display_stream *st)
             moveBlockIndex(dec);
             break;
         case 12:
-            dec->txb = (GET_LONG(dec->buf[0]) & 0xff00000L) >> 20;
-            dec->tyb = (GET_LONG(dec->buf[0]) & 0xff000L) >> 12;
+            dec->txb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff00000L) >> 20);
+            dec->tyb = (int32_t)((GET_LONG(dec->buf[0]) & 0xff000L) >> 12);
             updateReadBuf(dec, 20);
             // decompressJPEG(dec, dec->txb, dec->tyb, 2);
             moveBlockIndex(dec);
@@ -1087,12 +1095,13 @@ void stream_aspeed_data(display_stream *st)
         case 9:
             if(((GET_LONG(dec->buf[0]) >> 28) & 15L) == 9L)
                 goto done;
-            fprintf(stderr, "Unknow Marco Block type %08x\n", GET_LONG(dec->buf[0]) >> 28);
+            fprintf(stderr, "Unknow Marco Block type %08lx\n", GET_LONG(dec->buf[0]) >> 28);
             moveBlockIndex(dec);
             break;
         }
         // m_view.repaint((txb - 1) * 16, tyb * 16, 16, 16);
         k++;
+//        if (k == 5) exit(1);
     } while (dec->_index < j);
 
 done:
@@ -1102,7 +1111,6 @@ done:
 G_GNUC_INTERNAL
 void stream_aspeed_cleanup(display_stream *st)
 {
-    jpeg_destroy_decompress(&st->mjpeg_cinfo);
     g_free(st->out_frame);
     st->out_frame = NULL;
 }
